@@ -1,5 +1,4 @@
-# cdsw_tesseract_engine
-CDSW engone based on v10
+# spark-gateway-k3s
 [Source Code](https://github.com/alesbatalla/spark-gateway-k3s.git)
 
 ``` bash
