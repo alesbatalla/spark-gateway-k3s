@@ -4,7 +4,11 @@
 ``` bash
 sudo docker pull alesbatalla/spark-gateway-k3s:latest
 sudo docker build --tag alesbatalla/spark-gateway-k3s:latest -f ./Dockerfile .
-sudo docker run -it -p 21444:21444 -p 29739:29739 -p 21666:21666  -v /opt/cloudera:/opt/cloudera -v /usr/java/jdk1.8.0_232-cloudera:/usr/java/jdk alesbatalla/spark-gateway-k3s:latest 
+
+D_PORT=`comm -23 <(seq 21000 22000) <(ss -tan | awk '{print $4}' | cut -d':' -f2 | grep "[0-9]\{1,5\}" | sort | uniq) | shuf | head -n 1`
+B_PORT=`comm -23 <(seq 29000 30000) <(ss -tan | awk '{print $4}' | cut -d':' -f2 | grep "[0-9]\{1,5\}" | sort | uniq) | shuf | head -n 1`
+U_PORT=`comm -23 <(seq 22000 23000) <(ss -tan | awk '{print $4}' | cut -d':' -f2 | grep "[0-9]\{1,5\}" | sort | uniq) | shuf | head -n 1`
+sudo docker run -it -e "DOCKER_HOST=$HOSTNAME" -e "DRIVER_PORT=$D_PORT" -e "BLOCK_PORT=$B_PORT" -e "UI_PORT=$U_PORT"  -p $D_PORT:$D_PORT -p $B_PORT:$B_PORT -p $U_PORT:$U_PORT -v conf:/current -v /opt/cloudera:/opt/cloudera -v /usr/java/jdk1.8.0_232-cloudera:/usr/java/jdk alesbatalla/spark-gateway-k3s:latest 
 
 export JAVA_HOME=/usr/java/jdk
 export HADOOP_HOME=/opt/cloudera/parcels/CDH
@@ -12,6 +16,16 @@ export HADOOP_CONF_DIR=/current/hadoop-conf
 export YARN_CONF_DIR=/current/yarn-conf
 export SPARK_CONF_DIR=/current/spark-conf
 export PATH=$PATH:/opt/cloudera/parcels/CDH/bin:$JAVA_HOME/bin
+export CURRENT_IP=`hostname -I | awk '{print $1}'`
+export CURRENT_IP=`hostname -i`
+
+echo 'spark.driver.host '$DOCKER_HOST >>spark-conf/spark-defaults.conf
+echo 'spark.driver.port '$DRIVER_PORT >>spark-conf/spark-defaults.conf
+echo 'spark.driver.blockManager.port '$BLOCK_PORT >>spark-conf/spark-defaults.conf
+echo 'spark.ui.port='$UI_PORT >>spark-conf/spark-defaults.conf
+echo 'spark.app.name=Docker-spark' >>spark-conf/spark-defaults.conf
+echo 'spark.driver.bindAddress '$CURRENT_IP >>spark-conf/spark-defaults.conf
+
 
 java -version
 spark-shell
@@ -35,15 +49,6 @@ spark.ui.port=21666
 spark.app.name=Docker-spark
 # Container IP
 spark.driver.bindAddress 172.17.0.3
-
-
-
-
-
-
-
-
-
 
 
 # Set the driver's bind address to the CDSW engine's IP
@@ -78,19 +83,14 @@ spark.yarn.tags "Project Wine Pred"
 ################################################################################################################
 
 Para el nodo concreto
+export ROOT_HOME=/root/spark-gateway-k3s
 export JAVA_HOME=/usr/java/jdk1.8.0_232-cloudera/
 export HADOOP_HOME=/opt/cloudera/parcels/CDH
-export HADOOP_CONF_DIR=/home/rancher/spark-gateway-k3s/hadoop-conf
-export YARN_CONF_DIR=/home/rancher/spark-gateway-k3s/yarn-conf
-export SPARK_CONF_DIR=/home/rancher/spark-gateway-k3s/spark-conf
+export HADOOP_CONF_DIR=$ROOT_HOME/hadoop-conf
+export YARN_CONF_DIR=$ROOT_HOME/yarn-conf
+export SPARK_CONF_DIR=$ROOT_HOME/spark-conf
 export PATH=$PATH:/opt/cloudera/parcels/CDH/bin:$JAVA_HOME/bin
+
 
 java -version
 spark-shell
-
-
-
-spark.driver.host 10.0.0.6
-spark.driver.port 21444
-spark.driver.blockManager.port 29739
-spark.ui.port=21666
